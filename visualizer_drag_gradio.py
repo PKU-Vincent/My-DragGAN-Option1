@@ -872,6 +872,17 @@ with gr.Blocks() as app:
 
         image_raw = image_raw.convert('RGB')
         
+        # Resize to model resolution if possible
+        try:
+            res = global_state['renderer'].G.img_resolution
+            if res > 0:
+                image_raw = image_raw.resize((res, res), Image.LANCZOS)
+                print(f"Resized uploaded image to {res}x{res} to match model resolution.")
+        except Exception as e:
+            print(f"Could not resize image to model resolution: {e}. Defaulting to original size.")
+            # Fallback to 512 if model not loaded
+            image_raw = image_raw.resize((512, 512), Image.LANCZOS)
+        
         global_state['images']['image_raw'] = image_raw
         global_state['images']['image_orig'] = image_raw
         global_state['images']['image_show'] = image_raw

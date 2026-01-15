@@ -324,9 +324,14 @@ class Renderer:
         h, w = G.img_resolution, G.img_resolution
 
         if is_drag:
+            # Clamp points to image boundaries to avoid IndexError
+            for j in range(len(points)):
+                points[j][0] = max(0, min(points[j][0], h - 1))
+                points[j][1] = max(0, min(points[j][1], w - 1))
+            
             X = torch.linspace(0, h - 1, h)
             Y = torch.linspace(0, w - 1, w)
-            xx, yy = torch.meshgrid(X, Y)
+            xx, yy = torch.meshgrid(X, Y, indexing='ij')
             feat_resize = F.interpolate(feat[feature_idx], [h, w], mode='bilinear')
             if self.feat_refs is None:
                 self.feat0_resize = F.interpolate(feat[feature_idx].detach(), [h, w], mode='bilinear')
