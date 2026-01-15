@@ -18,13 +18,14 @@ class ImageMask(gr.components.Image):
         unsupported_kwargs = ["brush_radius", "tool", "source", "style"]
         for key in unsupported_kwargs:
             kwargs.pop(key, None)
+
+        # 防止 interactive 参数重复传递
+        interactive = kwargs.pop("interactive", False)
         
         try:
-            # 尝试旧版初始化
-            super().__init__(interactive=False, **kwargs)
+            super().__init__(interactive=interactive, **kwargs)
         except TypeError:
-            # 适配 Gradio 4.x
-            super().__init__(interactive=False, **kwargs)
+            super().__init__(interactive=interactive, **kwargs)
 
     def preprocess(self, x):
         if x is None:
