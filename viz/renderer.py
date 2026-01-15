@@ -324,8 +324,8 @@ class Renderer:
         h, w = G.img_resolution, G.img_resolution
 
         if is_drag:
-            X = torch.linspace(0, h, h)
-            Y = torch.linspace(0, w, w)
+            X = torch.linspace(0, h - 1, h)
+            Y = torch.linspace(0, w - 1, w)
             xx, yy = torch.meshgrid(X, Y)
             feat_resize = F.interpolate(feat[feature_idx], [h, w], mode='bilinear')
             if self.feat_refs is None:
@@ -333,6 +333,8 @@ class Renderer:
                 self.feat_refs = []
                 for point in points:
                     py, px = round(point[0]), round(point[1])
+                    py = max(0, min(py, h - 1))
+                    px = max(0, min(px, w - 1))
                     self.feat_refs.append(self.feat0_resize[:,:,py,px])
                 self.points0_pt = torch.Tensor(points).unsqueeze(0).to(self._device) # 1, N, 2
                 
@@ -345,15 +347,18 @@ class Renderer:
                 # Original feature matching logic
                 for j, point in enumerate(points):
                     r = round(r2 / 512 * h)
-                    up = max(point[0] - r, 0)
-                    down = min(point[0] + r + 1, h)
-                    left = max(point[1] - r, 0)
-                    right = min(point[1] + r + 1, w)
+                    up = max(int(round(point[0] - r)), 0)
+                    down = min(int(round(point[0] + r + 1)), h)
+                    left = max(int(round(point[1] - r)), 0)
+                    right = min(int(round(point[1] + r + 1)), w)
                     feat_patch = feat_resize[:,:,up:down,left:right]
                     L2 = torch.linalg.norm(feat_patch - self.feat_refs[j].reshape(1,-1,1,1), dim=1)
                     _, idx = torch.min(L2.view(1,-1), -1)
                     width = right - left
                     point = [idx.item() // width + up, idx.item() % width + left]
+                    # Clamp point to image boundaries
+                    point[0] = max(0, min(point[0], h - 1))
+                    point[1] = max(0, min(point[1], w - 1))
                     points[j] = point
 
             res.points = [[point[0], point[1]] for point in points]

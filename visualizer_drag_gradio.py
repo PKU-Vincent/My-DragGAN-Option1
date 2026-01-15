@@ -790,6 +790,13 @@ with gr.Blocks() as app:
         """This function only support click for point selection
         """
         xy = evt.index
+        # Clamp coordinates to image size
+        image_raw = global_state['images']['image_raw']
+        width, height = image_raw.size
+        x = max(0, min(xy[0], width - 1))
+        y = max(0, min(xy[1], height - 1))
+        xy = [x, y]
+
         if global_state['editing_state'] != 'add_points':
             print(f'In {global_state["editing_state"]} state. '
                   'Do not add points.')
