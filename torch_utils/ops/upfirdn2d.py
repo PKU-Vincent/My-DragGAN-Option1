@@ -19,9 +19,12 @@ from . import conv2d_gradfix
 #----------------------------------------------------------------------------
 
 _plugin = None
+_failed = False
 
 def _init():
-    global _plugin
+    global _plugin, _failed
+    if _failed:
+        return False
     if _plugin is None:
         try:
             _plugin = custom_ops.get_plugin(
@@ -32,6 +35,7 @@ def _init():
                 extra_cuda_cflags=['--use_fast_math', '--allow-unsupported-compiler'],
             )
         except Exception as e:
+            _failed = True
             print(f"Warning: Failed to build CUDA plugin for upfirdn2d. Falling back to reference implementation. Error: {e}")
             return False
     return True
