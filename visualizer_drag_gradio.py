@@ -467,27 +467,27 @@ with gr.Blocks() as app:
                 global_state,
                 0,
                 global_state['images']['image_show'],
-                # gr.File.update(visible=False),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
+                # gr.update(visible=False),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
                 # latent space
-                gr.Radio.update(interactive=True),
-                gr.Button.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
                 # NOTE: disable stop button
-                gr.Button.update(interactive=False),
+                gr.update(interactive=False),
 
                 # update other comps
-                gr.Dropdown.update(interactive=True),
-                gr.Number.update(interactive=True),
-                gr.Number.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Checkbox.update(interactive=True),
-                # gr.Number.update(interactive=True),
-                gr.Number.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                # gr.update(interactive=True),
+                gr.update(interactive=True),
             )
         else:
 
@@ -579,27 +579,27 @@ with gr.Blocks() as app:
                     global_state,
                     step_idx,
                     global_state['images']['image_show'],
-                    # gr.File.update(visible=False),
-                    gr.Button.update(interactive=False),
-                    gr.Button.update(interactive=False),
-                    gr.Button.update(interactive=False),
-                    gr.Button.update(interactive=False),
-                    gr.Button.update(interactive=False),
+                    # gr.update(visible=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
                     # latent space
-                    gr.Radio.update(interactive=False),
-                    gr.Button.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
                     # enable stop button in loop
-                    gr.Button.update(interactive=True),
+                    gr.update(interactive=True),
 
                     # update other comps
-                    gr.Dropdown.update(interactive=False),
-                    gr.Number.update(interactive=False),
-                    gr.Number.update(interactive=False),
-                    gr.Button.update(interactive=False),
-                    gr.Button.update(interactive=False),
-                    gr.Checkbox.update(interactive=False),
-                    # gr.Number.update(interactive=False),
-                    gr.Number.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    gr.update(interactive=False),
+                    # gr.update(interactive=False),
+                    gr.update(interactive=False),
                 )
 
                 # increate step
@@ -622,24 +622,24 @@ with gr.Blocks() as app:
                 global_state,
                 0,  # reset step to 0 after stop.
                 global_state['images']['image_show'],
-                # gr.File.update(visible=True, value=fp.name),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
-                gr.Button.update(interactive=True),
+                # gr.update(visible=True, value=fp.name),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
                 # latent space
-                gr.Radio.update(interactive=True),
-                gr.Button.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
                 # NOTE: disable stop button with loop finish
-                gr.Button.update(interactive=False),
+                gr.update(interactive=False),
 
                 # update other comps
-                gr.Dropdown.update(interactive=True),
-                gr.Number.update(interactive=True),
-                gr.Number.update(interactive=True),
-                gr.Checkbox.update(interactive=True),
-                gr.Number.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
+                gr.update(interactive=True),
             )
 
     form_start_btn.click(
@@ -676,7 +676,7 @@ with gr.Blocks() as app:
         """
         global_state["temporal_params"]["stop"] = True
 
-        return global_state, gr.Button.update(interactive=False)
+        return global_state, gr.update(interactive=False)
 
     form_stop_btn.click(on_click_stop,
                         inputs=[global_state],
@@ -702,7 +702,7 @@ with gr.Blocks() as app:
             global_state["curr_point"] = choices[0]
 
         return (
-            gr.Dropdown.update(choices=choices, value=choices[0]),
+            gr.update(choices=choices, value=choices[0]),
             global_state,
         )
 
@@ -741,7 +741,7 @@ with gr.Blocks() as app:
                                        global_state['mask'], True,
                                        global_state)
         return (global_state,
-                gr.Image.update(value=image_draw, interactive=True))
+                gr.update(value=image_draw, interactive=True))
 
     def on_click_remove_draw(global_state, image):
         """Function to start remove mask mode.
@@ -756,7 +756,7 @@ with gr.Blocks() as app:
                                        global_state['mask'], True,
                                        global_state)
         return (global_state,
-                gr.Image.update(value=image_draw, interactive=True))
+                gr.update(value=image_draw, interactive=True))
 
     enable_add_mask.click(on_click_enable_draw,
                           inputs=[global_state, form_image],
@@ -780,7 +780,7 @@ with gr.Blocks() as app:
                                        global_state['show_mask'], global_state)
 
         return (global_state,
-                gr.Image.update(value=image_draw, interactive=False))
+                gr.update(value=image_draw, interactive=False))
 
     enable_add_points.click(on_click_add_point,
                             inputs=[global_state, form_image],

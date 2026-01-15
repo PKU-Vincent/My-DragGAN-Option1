@@ -29,14 +29,10 @@ class ImageMask(gr.components.Image):
     def preprocess(self, x):
         if x is None:
             return x
-        if self.tool == "sketch" and self.source in ["upload", "webcam"
-                                                     ] and type(x) != dict:
-            decode_image = gr.processing_utils.decode_base64_to_image(x)
-            width, height = decode_image.size
-            mask = np.ones((height, width, 4), dtype=np.uint8)
-            mask[..., -1] = 255
-            mask = self.postprocess(mask)
-            x = {'image': x, 'mask': mask}
+        # Gradio 4.x 中 x 的结构发生了变化，通常直接就是字典或 PIL 对象
+        if self.tool == "sketch" and self.source in ["upload", "webcam"] and isinstance(x, dict):
+            # 如果已经是字典（包含 image 和 mask），直接返回
+            return x
         return super().preprocess(x)
 
 
