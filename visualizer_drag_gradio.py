@@ -72,24 +72,31 @@ def init_images(global_state):
     else:
         state = global_state
 
-    state['renderer'].init_network(
-        state['generator_params'],  # res
-        valid_checkpoints_dict[state['pretrained_weight']],  # pkl
-        state['params']['seed'],  # w0_seed,
-        None,  # w_load
-        state['params']['latent_space'] == 'w+',  # w_plus
-        'const',
-        state['params']['trunc_psi'],  # trunc_psi,
-        state['params']['trunc_cutoff'],  # trunc_cutoff,
-        None,  # input_transform
-        state['params']['lr']  # lr,
-    )
+    if state['pretrained_weight'] in valid_checkpoints_dict:
+        state['renderer'].init_network(
+            state['generator_params'],  # res
+            valid_checkpoints_dict[state['pretrained_weight']],  # pkl
+            state['params']['seed'],  # w0_seed,
+            None,  # w_load
+            state['params']['latent_space'] == 'w+',  # w_plus
+            'const',
+            state['params']['trunc_psi'],  # trunc_psi,
+            state['params']['trunc_cutoff'],  # trunc_cutoff,
+            None,  # input_transform
+            state['params']['lr']  # lr,
+        )
 
-    state['renderer']._render_drag_impl(state['generator_params'],
-                                        is_drag=False,
-                                        to_pil=True)
+        state['renderer']._render_drag_impl(state['generator_params'],
+                                            is_drag=False,
+                                            to_pil=True)
 
-    init_image = state['generator_params'].image
+        init_image = state['generator_params'].image
+    else:
+        print(f"Warning: Pretrained weight {state['pretrained_weight']} not found.")
+        print("Please download models to the 'checkpoints' directory.")
+        # Create a placeholder image (black 512x512)
+        init_image = Image.new('RGB', (512, 512), (0, 0, 0))
+
     state['images']['image_orig'] = init_image
     state['images']['image_raw'] = init_image
     state['images']['image_show'] = Image.fromarray(
@@ -156,6 +163,12 @@ valid_checkpoints_dict = {
     for f in os.listdir(cache_dir)
     if (f.endswith('pkl') and osp.exists(osp.join(cache_dir, f)))
 }
+if len(valid_checkpoints_dict) == 0:
+    print(f'Warning: No checkpoint file found under {cache_dir}')
+    dropdown_choices = ["No models found in checkpoints/"]
+else:
+    dropdown_choices = list(valid_checkpoints_dict.keys())
+
 print(f'File under cache_dir ({cache_dir}):')
 print(os.listdir(cache_dir))
 print('Valid checkpoint file:')
@@ -198,7 +211,7 @@ with gr.Blocks() as app:
         "curr_point": None,
         "curr_type_point": "start",
         'editing_state': 'add_points',
-        'pretrained_weight': init_pkl
+        'pretrained_weight': dropdown_choices[0]
     })
 
     # init image
@@ -219,9 +232,9 @@ with gr.Blocks() as app:
 
                     with gr.Column(scale=4, min_width=10):
                         form_pretrained_dropdown = gr.Dropdown(
-                            choices=list(valid_checkpoints_dict.keys()),
+                            choices=dropdown_choices,
                             label="Pretrained Model",
-                            value=init_pkl,
+                            value=dropdown_choices[0],
                         )
 
                 # Latent
@@ -352,6 +365,8 @@ with gr.Blocks() as app:
         1. Set pretrained value to global_state
         2. Re-init images and clear all states
         """
+        if pretrained_value is None or pretrained_value not in valid_checkpoints_dict:
+            return global_state, global_state["images"].get('image_show', None)
 
         global_state['pretrained_weight'] = pretrained_value
         init_images(global_state)
@@ -388,6 +403,8 @@ with gr.Blocks() as app:
         1. Set seed to global_state
         2. Re-init images and clear all states
         """
+        if global_state['pretrained_weight'] not in valid_checkpoints_dict:
+            return global_state, global_state["images"].get('image_show', None)
 
         global_state["params"]["seed"] = int(seed)
         init_images(global_state)
@@ -831,6 +848,46 @@ with gr.Blocks() as app:
         on_click_image,
         inputs=[global_state],
         outputs=[global_state, form_image],
+    )
+
+    def on_upload_image(image, global_state):
+        """Handle user uploading a custom image."""
+        if image is None:
+            return global_state, global_state['images'].get('image_show', None)
+
+        # In Gradio 4.x, if tool="sketch", image might be a dict with 'background' and 'layers'
+        if isinstance(image, dict):
+            if 'background' in image and image['background'] is not None:
+                image_raw = image['background']
+            elif 'image' in image and image['image'] is not None:
+                image_raw = image['image']
+            else:
+                return global_state, global_state['images'].get('image_show', None)
+        else:
+            image_raw = image
+
+        # Ensure it's a PIL Image
+        if not isinstance(image_raw, Image.Image):
+            image_raw = Image.fromarray(image_raw)
+
+        image_raw = image_raw.convert('RGB')
+        
+        global_state['images']['image_raw'] = image_raw
+        global_state['images']['image_orig'] = image_raw
+        global_state['images']['image_show'] = image_raw
+        
+        # Reset mask and points to match new image size
+        global_state['mask'] = np.ones((image_raw.size[1], image_raw.size[0]), dtype=np.uint8)
+        global_state['points'] = {}
+        
+        print("User uploaded a custom image. Points and mask reset.")
+        
+        return global_state, image_raw
+
+    form_image.upload(
+        on_upload_image,
+        inputs=[form_image, global_state],
+        outputs=[global_state, form_image]
     )
 
     def on_click_clear_points(global_state):
