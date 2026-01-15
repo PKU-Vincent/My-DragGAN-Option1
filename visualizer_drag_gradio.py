@@ -867,5 +867,10 @@ with gr.Blocks() as app:
     )
 
 gr.close_all()
-app.queue(concurrency_count=3, max_size=20)
+# Gradio 4.x 兼容性：移除了 concurrency_count 参数
+try:
+    app.queue(max_size=20)
+except TypeError:
+    app.queue()
+
 app.launch(share=args.share, server_name="0.0.0.0" if args.listen else "127.0.0.1")
