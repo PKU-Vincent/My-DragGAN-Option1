@@ -306,9 +306,9 @@ with gr.Blocks() as app:
             with gr.Column(scale=8):
                 form_image = ImageMask(
                     value=global_state.value['images']['image_show'],
-                    brush_radius=20).style(
-                        width=768,
-                        height=768)  # NOTE: hard image size code here.
+                    brush_radius=20,
+                    width=768,
+                    height=768)  # NOTE: hard image size code here.
     gr.Markdown("""
         ## Quick Start
 

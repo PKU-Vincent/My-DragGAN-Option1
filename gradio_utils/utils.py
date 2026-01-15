@@ -13,6 +13,10 @@ class ImageMask(gr.components.Image):
     def __init__(self, **kwargs):
         self.source = "upload"
         self.tool = "sketch"
+        
+        # Gradio 4.0+ compatibility: pop arguments that are no longer supported in gr.Image
+        kwargs.pop("brush_radius", None)
+        
         try:
             super().__init__(source=self.source,
                              tool=self.tool,
@@ -20,6 +24,9 @@ class ImageMask(gr.components.Image):
                              **kwargs)
         except TypeError:
             # Fallback for Gradio 4.0+
+            # In Gradio 4, 'source' became 'sources' (list)
+            # 'tool' is no longer a direct argument, sketching is handled differently
+            # but we'll try to keep it as simple as possible to avoid breaking logic
             super().__init__(sources=[self.source],
                              interactive=False,
                              **kwargs)
