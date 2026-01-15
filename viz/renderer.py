@@ -336,41 +336,25 @@ class Renderer:
                     self.feat_refs.append(self.feat0_resize[:,:,py,px])
                 self.points0_pt = torch.Tensor(points).unsqueeze(0).to(self._device) # 1, N, 2
                 
-                # RAFT reset
+                # RAFT reset (Temporarily disabled to run original code)
                 self.prev_img = None
                 self.prev_points = None
 
             # Point tracking
             with torch.no_grad():
-                # Capture current image for RAFT
-                # img is (1, 3, H, W), range [-1, 1]
-                curr_img_np = (img[0].permute(1, 2, 0).detach().cpu().numpy() * 127.5 + 127.5).clip(0, 255).astype(np.uint8)
-                
-                use_raft = False
-                if self.prev_img is not None and self.raft_tracker.is_ready:
-                    # Option 1: Use RAFT for point tracking
-                    new_points = self.raft_tracker.update_points(self.prev_img, curr_img_np, points)
-                    points = new_points
-                    use_raft = True
-                
-                if not use_raft:
-                    # Fallback to original feature matching
-                    for j, point in enumerate(points):
-                        r = round(r2 / 512 * h)
-                        up = max(point[0] - r, 0)
-                        down = min(point[0] + r + 1, h)
-                        left = max(point[1] - r, 0)
-                        right = min(point[1] + r + 1, w)
-                        feat_patch = feat_resize[:,:,up:down,left:right]
-                        L2 = torch.linalg.norm(feat_patch - self.feat_refs[j].reshape(1,-1,1,1), dim=1)
-                        _, idx = torch.min(L2.view(1,-1), -1)
-                        width = right - left
-                        point = [idx.item() // width + up, idx.item() % width + left]
-                        points[j] = point
-                
-                # Update state for next iteration
-                self.prev_img = curr_img_np
-                self.prev_points = copy.deepcopy(points)
+                # Original feature matching logic
+                for j, point in enumerate(points):
+                    r = round(r2 / 512 * h)
+                    up = max(point[0] - r, 0)
+                    down = min(point[0] + r + 1, h)
+                    left = max(point[1] - r, 0)
+                    right = min(point[1] + r + 1, w)
+                    feat_patch = feat_resize[:,:,up:down,left:right]
+                    L2 = torch.linalg.norm(feat_patch - self.feat_refs[j].reshape(1,-1,1,1), dim=1)
+                    _, idx = torch.min(L2.view(1,-1), -1)
+                    width = right - left
+                    point = [idx.item() // width + up, idx.item() % width + left]
+                    points[j] = point
 
             res.points = [[point[0], point[1]] for point in points]
 

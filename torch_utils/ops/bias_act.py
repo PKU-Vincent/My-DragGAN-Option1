@@ -40,6 +40,14 @@ def _init():
     global _plugin, _failed
     if _failed:
         return False
+    
+    # 在 Colab / Python 3.12 环境下，CUDA 插件编译极易卡死或报错
+    # 为了保证能跑通，我们强制跳过编译，使用参考实现
+    import sys
+    if sys.version_info >= (3, 12):
+        _failed = True
+        return False
+
     if _plugin is None:
         try:
             _plugin = custom_ops.get_plugin(
