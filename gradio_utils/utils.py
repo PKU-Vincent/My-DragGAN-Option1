@@ -11,10 +11,18 @@ class ImageMask(gr.components.Image):
     is_template = True
 
     def __init__(self, **kwargs):
-        super().__init__(source="upload",
-                         tool="sketch",
-                         interactive=False,
-                         **kwargs)
+        self.source = "upload"
+        self.tool = "sketch"
+        try:
+            super().__init__(source=self.source,
+                             tool=self.tool,
+                             interactive=False,
+                             **kwargs)
+        except TypeError:
+            # Fallback for Gradio 4.0+
+            super().__init__(sources=[self.source],
+                             interactive=False,
+                             **kwargs)
 
     def preprocess(self, x):
         if x is None:
