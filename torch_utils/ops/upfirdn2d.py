@@ -23,13 +23,17 @@ _plugin = None
 def _init():
     global _plugin
     if _plugin is None:
-        _plugin = custom_ops.get_plugin(
-            module_name='upfirdn2d_plugin',
-            sources=['upfirdn2d.cpp', 'upfirdn2d.cu'],
-            headers=['upfirdn2d.h'],
-            source_dir=os.path.dirname(__file__),
-            extra_cuda_cflags=['--use_fast_math', '--allow-unsupported-compiler'],
-        )
+        try:
+            _plugin = custom_ops.get_plugin(
+                module_name='upfirdn2d_plugin',
+                sources=['upfirdn2d.cpp', 'upfirdn2d.cu'],
+                headers=['upfirdn2d.h'],
+                source_dir=os.path.dirname(__file__),
+                extra_cuda_cflags=['--use_fast_math', '--allow-unsupported-compiler'],
+            )
+        except Exception as e:
+            print(f"Warning: Failed to build CUDA plugin for upfirdn2d. Falling back to reference implementation. Error: {e}")
+            return False
     return True
 
 def _parse_scaling(scaling):
