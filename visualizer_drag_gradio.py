@@ -273,123 +273,94 @@ with gr.Blocks() as app:
     global_state = init_images(global_state)
 
     with gr.Row():
+        # Left --> tools
+        with gr.Column(scale=3):
 
-        with gr.Row():
-
-            # Left --> tools
-            with gr.Column(scale=3):
-
-                # Pickle
+            # Pickle Model Selection
+            with gr.Group():
+                gr.Markdown("### 1. Model Selection (Pickle)")
+                form_pretrained_dropdown = gr.Dropdown(
+                    choices=dropdown_choices,
+                    label="Select Model Weights",
+                    value=dropdown_choices[0],
+                    interactive=True,
+                )
+                
                 with gr.Row():
-                    form_pretrained_dropdown = gr.Dropdown(
-                        choices=dropdown_choices,
-                        label="Pickle (Select Model)",
-                        value=dropdown_choices[0],
+                    download_btn = gr.Button("Download Defaults", variant="secondary")
+                    refresh_btn = gr.Button("Refresh List", variant="secondary")
+                
+                model_status = gr.Markdown(
+                    "✅ Models loaded." if not dropdown_choices[0].startswith("No models") else "⚠️ No models found!"
+                )
+
+                with gr.Accordion("Debug Info", open=False):
+                    loaded_path = gr.Textbox(label="Full Path", value=valid_checkpoints_dict.get(dropdown_choices[0], ""), interactive=False)
+
+            # Latent space & Seed
+            with gr.Group():
+                gr.Markdown("### 2. Image Generation (Latent)")
+                with gr.Row():
+                    form_seed_number = gr.Number(
+                        value=global_state.value['params']['seed'],
                         interactive=True,
+                        label="Seed",
                     )
-                
-                # Model Management (Always show these for better UX)
+                    form_lr_number = gr.Number(
+                        value=global_state.value["params"]["lr"],
+                        interactive=True,
+                        label="Step Size")
+
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value='Model', show_label=False)
-                    with gr.Column(scale=4, min_width=10):
-                        with gr.Row():
-                            download_btn = gr.Button("Download Defaults", variant="secondary")
-                            refresh_btn = gr.Button("Refresh List", variant="secondary")
-                
-                with gr.Row():
-                    model_status = gr.Markdown(
-                        "⚠️ No models found!" if dropdown_choices[0].startswith("No models") else "✅ Models loaded."
+                    form_reset_image = gr.Button("Reset Image")
+                    form_latent_space = gr.Radio(
+                        ['w', 'w+'],
+                        value=global_state.value['params']['latent_space'],
+                        interactive=True,
+                        label='Latent Space',
                     )
 
-                    with gr.Accordion("Debug Info", open=False):
-                        loaded_path = gr.Textbox(label="Loaded Model Path", interactive=False)
-
-                # Latent
+            # Drag controls
+            with gr.Group():
+                gr.Markdown("### 3. Drag Control")
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value='Latent', show_label=False)
-
-                    with gr.Column(scale=4, min_width=10):
-                        form_seed_number = gr.Number(
-                            value=global_state.value['params']['seed'],
-                            interactive=True,
-                            label="Seed",
-                        )
-                        form_lr_number = gr.Number(
-                            value=global_state.value["params"]["lr"],
-                            interactive=True,
-                            label="Step Size")
-
-                        with gr.Row():
-                            with gr.Column(scale=2, min_width=10):
-                                form_reset_image = gr.Button("Reset Image")
-                            with gr.Column(scale=3, min_width=10):
-                                form_latent_space = gr.Radio(
-                                    ['w', 'w+'],
-                                    value=global_state.value['params']
-                                    ['latent_space'],
-                                    interactive=True,
-                                    label='Latent space to optimize',
-                                    show_label=False,
-                                )
-
-                # Drag
+                    enable_add_points = gr.Button('Add Points', variant="primary")
+                    undo_points = gr.Button('Reset Points')
+                
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value='Drag', show_label=False)
-                    with gr.Column(scale=4, min_width=10):
-                        with gr.Row():
-                            with gr.Column(scale=1, min_width=10):
-                                enable_add_points = gr.Button('Add Points')
-                            with gr.Column(scale=1, min_width=10):
-                                undo_points = gr.Button('Reset Points')
-                        with gr.Row():
-                            with gr.Column(scale=1, min_width=10):
-                                form_start_btn = gr.Button("Start")
-                            with gr.Column(scale=1, min_width=10):
-                                form_stop_btn = gr.Button("Stop")
+                    form_start_btn = gr.Button("Start", variant="primary")
+                    form_stop_btn = gr.Button("Stop")
 
-                        form_steps_number = gr.Number(value=0,
-                                                      label="Steps",
-                                                      interactive=False)
+                form_steps_number = gr.Number(value=0, label="Steps", interactive=False)
 
-                # Mask
+            # Mask controls
+            with gr.Group():
+                gr.Markdown("### 4. Masking (Optional)")
+                enable_add_mask = gr.Button('Edit Flexible Area')
                 with gr.Row():
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value='Mask', show_label=False)
-                    with gr.Column(scale=4, min_width=10):
-                        enable_add_mask = gr.Button('Edit Flexible Area')
-                        with gr.Row():
-                            with gr.Column(scale=1, min_width=10):
-                                form_reset_mask_btn = gr.Button("Reset mask")
-                            with gr.Column(scale=1, min_width=10):
-                                show_mask = gr.Checkbox(
-                                    label='Show Mask',
-                                    value=global_state.value['show_mask'],
-                                    show_label=False)
+                    form_reset_mask_btn = gr.Button("Reset Mask")
+                    show_mask = gr.Checkbox(
+                        label='Show Mask',
+                        value=global_state.value['show_mask'],
+                    )
 
-                        with gr.Row():
-                            form_lambda_number = gr.Number(
-                                value=global_state.value["params"]
-                                ["motion_lambda"],
-                                interactive=True,
-                                label="Lambda",
-                            )
-
+            with gr.Row(visible=False):
+                form_lambda_number = gr.Number(
+                    value=global_state.value["params"]["motion_lambda"],
+                    label="Lambda",
+                )
                 form_draw_interval_number = gr.Number(
                     value=global_state.value["draw_interval"],
-                    label="Draw Interval (steps)",
-                    interactive=True,
-                    visible=False)
+                    label="Draw Interval",
+                )
 
-            # Right --> Image
-            with gr.Column(scale=8):
-                form_image = ImageMask(
-                    value=global_state.value['images']['image_show'],
-                    brush_radius=20,
-                    width=768,
-                    height=768)  # NOTE: hard image size code here.
+        # Right --> Image
+        with gr.Column(scale=8):
+            form_image = ImageMask(
+                value=global_state.value['images']['image_show'],
+                brush_radius=20,
+                width=768,
+                height=768)
     gr.Markdown("""
         ## Quick Start
 
