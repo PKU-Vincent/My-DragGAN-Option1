@@ -219,9 +219,7 @@ def download_models_handler():
         subprocess.run([sys.executable, "scripts/download_model.py"], check=True)
         gr.Info("Download completed successfully!")
         new_choices = get_model_list()
-        
-        has_models = not new_choices[0].startswith("(")
-        status = "✅ Models loaded." if has_models else "⚠️ Download finished but no .pkl files found."
+        status = "✅ Models loaded." if not new_choices[0].startswith("(") else "⚠️ Download failed?"
         
         default_val = new_choices[0]
         full_path = valid_checkpoints_dict.get(default_val, "None")
@@ -235,13 +233,8 @@ def refresh_models_handler():
     new_choices = get_model_list()
     has_models = not new_choices[0].startswith("(")
     num = len(new_choices) if has_models else 0
-    
-    if has_models:
-        gr.Info(f"Found {num} models.")
-        status = "✅ Models loaded."
-    else:
-        gr.Warning("No models found in checkpoints/ or root directory.")
-        status = "⚠️ No models found!"
+    gr.Info(f"Found {num} models.")
+    status = "✅ Models loaded." if num > 0 else "⚠️ No models found!"
     
     default_val = new_choices[0]
     full_path = valid_checkpoints_dict.get(default_val, "None")
@@ -292,84 +285,123 @@ with gr.Blocks() as app:
     global_state = init_images(global_state)
 
     with gr.Row():
-        # Left --> tools
-        with gr.Column(scale=3):
 
-            # 1. Model Selection
-            form_pretrained_dropdown = gr.Dropdown(
-                choices=dropdown_choices if dropdown_choices else ["(Scanning...)"],
-                label="Pickle (Select Model Here)",
-                value=dropdown_choices[0] if dropdown_choices else None,
-                interactive=True,
-            )
-            
-            with gr.Row():
-                download_btn = gr.Button("Download Models", variant="primary")
-                refresh_btn = gr.Button("Refresh List")
-            
-            model_status = gr.Markdown(
-                "✅ Models loaded." if not dropdown_choices[0].startswith("(") else "⚠️ No models found! Click 'Download Models'."
-            )
+        with gr.Row():
 
-            # 2. Image Generation
-            with gr.Row():
-                form_seed_number = gr.Number(
-                    value=global_state.value['params']['seed'],
-                    interactive=True,
-                    label="Seed",
-                )
-                form_lr_number = gr.Number(
-                    value=global_state.value["params"]["lr"],
-                    interactive=True,
-                    label="Step Size")
+            # Left --> tools
+            with gr.Column(scale=3):
 
-            with gr.Row():
-                form_reset_image = gr.Button("Reset Image")
-                form_latent_space = gr.Radio(
-                    ['w', 'w+'],
-                    value=global_state.value['params']['latent_space'],
-                    interactive=True,
-                    label='Latent Space',
-                )
+                # Pickle
+                with gr.Row():
+                    form_pretrained_dropdown = gr.Dropdown(
+                        choices=dropdown_choices,
+                        label="Pickle (Select Model)",
+                        value=dropdown_choices[0],
+                        interactive=True,
+                    )
+                
+                # Model Management (Always show these for better UX)
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value='Model', show_label=False)
+                    with gr.Column(scale=4, min_width=10):
+                        with gr.Row():
+                            download_btn = gr.Button("Download Defaults", variant="secondary")
+                            refresh_btn = gr.Button("Refresh List", variant="secondary")
+                
+                with gr.Row():
+                    model_status = gr.Markdown(
+                        "⚠️ No models found!" if dropdown_choices[0].startswith("No models") else "✅ Models loaded."
+                    )
 
-            # 3. Drag Control
-            with gr.Row():
-                enable_add_points = gr.Button('Add Points', variant="primary")
-                undo_points = gr.Button('Reset Points')
-            
-            with gr.Row():
-                form_start_btn = gr.Button("Start", variant="primary")
-                form_stop_btn = gr.Button("Stop")
+                    with gr.Accordion("Debug Info", open=False):
+                        loaded_path = gr.Textbox(label="Loaded Model Path", interactive=False)
 
-            form_steps_number = gr.Number(value=0, label="Steps", interactive=False)
+                # Latent
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value='Latent', show_label=False)
 
-            # 4. Masking
-            enable_add_mask = gr.Button('Edit Flexible Area')
-            with gr.Row():
-                form_reset_mask_btn = gr.Button("Reset Mask")
-                show_mask = gr.Checkbox(
-                    label='Show Mask',
-                    value=global_state.value['show_mask'],
-                )
+                    with gr.Column(scale=4, min_width=10):
+                        form_seed_number = gr.Number(
+                            value=global_state.value['params']['seed'],
+                            interactive=True,
+                            label="Seed",
+                        )
+                        form_lr_number = gr.Number(
+                            value=global_state.value["params"]["lr"],
+                            interactive=True,
+                            label="Step Size")
 
-            with gr.Accordion("Debug & Advanced", open=False):
-                loaded_path = gr.Textbox(label="Model Path", value=valid_checkpoints_dict.get(dropdown_choices[0], ""), interactive=False)
-                form_lambda_number = gr.Number(
-                    value=global_state.value["params"]["motion_lambda"],
-                    label="Lambda",
-                )
+                        with gr.Row():
+                            with gr.Column(scale=2, min_width=10):
+                                form_reset_image = gr.Button("Reset Image")
+                            with gr.Column(scale=3, min_width=10):
+                                form_latent_space = gr.Radio(
+                                    ['w', 'w+'],
+                                    value=global_state.value['params']
+                                    ['latent_space'],
+                                    interactive=True,
+                                    label='Latent space to optimize',
+                                    show_label=False,
+                                )
+
+                # Drag
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value='Drag', show_label=False)
+                    with gr.Column(scale=4, min_width=10):
+                        with gr.Row():
+                            with gr.Column(scale=1, min_width=10):
+                                enable_add_points = gr.Button('Add Points')
+                            with gr.Column(scale=1, min_width=10):
+                                undo_points = gr.Button('Reset Points')
+                        with gr.Row():
+                            with gr.Column(scale=1, min_width=10):
+                                form_start_btn = gr.Button("Start")
+                            with gr.Column(scale=1, min_width=10):
+                                form_stop_btn = gr.Button("Stop")
+
+                        form_steps_number = gr.Number(value=0,
+                                                      label="Steps",
+                                                      interactive=False)
+
+                # Mask
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value='Mask', show_label=False)
+                    with gr.Column(scale=4, min_width=10):
+                        enable_add_mask = gr.Button('Edit Flexible Area')
+                        with gr.Row():
+                            with gr.Column(scale=1, min_width=10):
+                                form_reset_mask_btn = gr.Button("Reset mask")
+                            with gr.Column(scale=1, min_width=10):
+                                show_mask = gr.Checkbox(
+                                    label='Show Mask',
+                                    value=global_state.value['show_mask'],
+                                    show_label=False)
+
+                        with gr.Row():
+                            form_lambda_number = gr.Number(
+                                value=global_state.value["params"]
+                                ["motion_lambda"],
+                                interactive=True,
+                                label="Lambda",
+                            )
+
                 form_draw_interval_number = gr.Number(
                     value=global_state.value["draw_interval"],
-                    label="Draw Interval",
-                )
+                    label="Draw Interval (steps)",
+                    interactive=True,
+                    visible=False)
 
-        # Right --> Image
-        with gr.Column(scale=8):
-            form_image = ImageMask(
-                value=global_state.value['images']['image_show'],
-                brush_radius=20,
-                width=768,
-                height=768)
+            # Right --> Image
+            with gr.Column(scale=8):
+                form_image = ImageMask(
+                    value=global_state.value['images']['image_show'],
+                    brush_radius=20,
+                    width=768,
+                    height=768)  # NOTE: hard image size code here.
     gr.Markdown("""
         ## Quick Start
 
@@ -392,15 +424,15 @@ with gr.Blocks() as app:
         """)
     gr.HTML("""
         <style>
-            .footer-container {
-                margin-top: 20px;
+            .container {
+                position: absolute;
+                height: 50px;
                 text-align: center;
+                line-height: 50px;
                 width: 100%;
-                padding: 10px;
-                border-top: 1px solid #ddd;
             }
         </style>
-        <div class="footer-container">
+        <div class="container">
         Gradio demo supported by
         <img src="https://avatars.githubusercontent.com/u/10245193?s=200&v=4" height="20" width="20" style="display:inline;">
         <a href="https://github.com/open-mmlab/mmagic">OpenMMLab MMagic</a>
@@ -408,43 +440,19 @@ with gr.Blocks() as app:
         """)
 
     # Network & latents tab listeners
-    def on_app_load():
-        """Ensure model list is refreshed on startup."""
-        print("\n[Startup] Refreshing model list...")
-        new_choices = get_model_list()
-        print(f"[Startup] Found choices: {new_choices}")
-        if not new_choices or new_choices[0].startswith("("):
-            return gr.update(choices=new_choices), "⚠️ No models found! Please download."
-        return gr.update(choices=new_choices, value=new_choices[0]), "✅ Models loaded."
-
     def on_change_pretrained_dropdown(pretrained_value, global_state):
         """Function to handle model change.
         1. Set pretrained value to global_state
         2. Re-init images and clear all states
         """
-        print(f"\n[Event] Dropdown changed to: {pretrained_value}")
-        
-        if pretrained_value is None or pretrained_value.startswith("(") or pretrained_value not in valid_checkpoints_dict:
-            print(f"  [Warning] Invalid model selection: {pretrained_value}")
-            gr.Warning(f"Invalid model selection: {pretrained_value}")
+        if pretrained_value is None or pretrained_value not in valid_checkpoints_dict:
             return global_state, global_state["images"].get('image_show', None), ""
 
-        print(f"  [Action] Loading model: {pretrained_value}")
-        print(f"  [Path] {valid_checkpoints_dict[pretrained_value]}")
-        
         global_state['pretrained_weight'] = pretrained_value
-        
-        try:
-            init_images(global_state)
-            clear_state(global_state)
-            print(f"  [Success] Model {pretrained_value} loaded.")
-        except Exception as e:
-            print(f"  [Error] Failed to load model: {e}")
-            gr.Error(f"Failed to load model: {str(e)}")
-            return global_state, global_state["images"].get('image_show', None), str(e)
+        init_images(global_state)
+        clear_state(global_state)
 
         full_path = valid_checkpoints_dict.get(pretrained_value, "Unknown")
-        gr.Info(f"Loaded model: {pretrained_value}")
         return global_state, global_state["images"]['image_show'], full_path
 
     form_pretrained_dropdown.change(
@@ -459,7 +467,6 @@ with gr.Blocks() as app:
         2. Clear all states
         """
         if global_state['pretrained_weight'] not in valid_checkpoints_dict:
-            gr.Warning("No valid model loaded. Please select a model first.")
             return global_state, global_state['images'].get('image_show', None)
 
         init_images(global_state)
@@ -1050,11 +1057,6 @@ with gr.Blocks() as app:
         on_click_show_mask,
         inputs=[global_state, show_mask],
         outputs=[global_state, form_image],
-    )
-
-    app.load(
-        on_app_load,
-        outputs=[form_pretrained_dropdown, model_status]
     )
 
 gr.close_all()
