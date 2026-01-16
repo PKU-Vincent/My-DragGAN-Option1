@@ -281,17 +281,13 @@ with gr.Blocks() as app:
 
                 # Pickle
                 with gr.Row():
-
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value='Pickle', show_label=False)
-
-                    with gr.Column(scale=4, min_width=10):
-                        form_pretrained_dropdown = gr.Dropdown(
-                            choices=dropdown_choices,
-                            label="Pretrained Model",
-                            value=dropdown_choices[0],
-                            interactive=True
-                        )
+                    form_pretrained_dropdown = gr.Dropdown(
+                        choices=dropdown_choices,
+                        label="Pickle (Select Model)",
+                        value=dropdown_choices[0],
+                        interactive=True,
+                        show_label=True
+                    )
                 
                 # Model Management (Always show these for better UX)
                 with gr.Row():

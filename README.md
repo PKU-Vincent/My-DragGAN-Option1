@@ -52,7 +52,7 @@ You can run DragGAN directly on Google Colab without local installation.
    !python scripts/download_model.py
 
    # Option B: Use the automation script
-   !sh colab_setup.sh
+   !bash colab_setup.sh
    ```
 
 3. **Launch Gradio Interface**:
@@ -115,7 +115,7 @@ Beware the Docker image takes about 25GB of disk space!
 To download pre-trained weights, simply run:
 
 ```
-python scripts/download_model.py
+!python scripts/download_model.py
 ```
 If you want to try StyleGAN-Human and the Landscapes HQ (LHQ) dataset, please download weights from these links: [StyleGAN-Human](https://drive.google.com/file/d/1dlFEHbu-WzQWJl7nBBZYcTyo000H9hVm/view?usp=sharing), [LHQ](https://drive.google.com/file/d/16twEf0T9QINAEoMsWefoWiyhcTd-aiWc/view?usp=sharing), and put them under `./checkpoints`.
 
@@ -123,7 +123,9 @@ Feel free to try other pretrained StyleGAN.
 
 ## Run DragGAN GUI
 
-To start the DragGAN GUI, simply run:
+To run the Gradio visualizer:
+```
+!python visualizer_drag_gradio.py
 ```sh
 sh scripts/gui.sh
 ```
