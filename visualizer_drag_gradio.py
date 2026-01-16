@@ -160,21 +160,41 @@ def preprocess_mask_info(global_state, image):
 
 def get_model_list():
     global valid_checkpoints_dict
-    valid_checkpoints_dict = {
-        f.split('/')[-1].split('.')[0]: osp.join(cache_dir, f)
-        for f in os.listdir(cache_dir)
-        if (f.endswith('pkl') and osp.exists(osp.join(cache_dir, f)))
-    } if osp.exists(cache_dir) else {}
-
-    # If checkpoints directory is empty, try to find any pkl in the root
-    if len(valid_checkpoints_dict) == 0:
-        for f in os.listdir('.'):
+    valid_checkpoints_dict = {}
+    
+    print(f"Scanning for models in {cache_dir} and root...")
+    
+    # Search in cache_dir
+    if osp.exists(cache_dir):
+        for f in os.listdir(cache_dir):
             if f.endswith('.pkl'):
-                valid_checkpoints_dict[f.split('.')[0]] = osp.abspath(f)
+                name = osp.splitext(f)[0]
+                valid_checkpoints_dict[name] = osp.abspath(osp.join(cache_dir, f))
+                print(f"Found model in checkpoints: {name}")
+
+    # Also search in root directory
+    for f in os.listdir('.'):
+        if f.endswith('.pkl'):
+            name = osp.splitext(f)[0]
+            if name not in valid_checkpoints_dict:
+                valid_checkpoints_dict[name] = osp.abspath(f)
+                print(f"Found model in root: {name}")
     
     if len(valid_checkpoints_dict) == 0:
+        print("No models found!")
         return ["No models found. Run scripts/download_model.py"]
-    return sorted(list(valid_checkpoints_dict.keys()))
+    
+    models = sorted(list(valid_checkpoints_dict.keys()))
+    
+    # Move lion model to the front if it exists
+    lion_model = 'stylegan2_lions_512_pytorch'
+    if lion_model in models:
+        models.remove(lion_model)
+        models.insert(0, lion_model)
+        print(f"Setting default model to: {models[0]}")
+    
+    print(f"Final model list: {models}")
+    return models
 
 valid_checkpoints_dict = {}
 dropdown_choices = get_model_list()
@@ -189,17 +209,25 @@ def download_models_handler():
         gr.Info("Download completed successfully!")
         new_choices = get_model_list()
         status = "✅ Models loaded." if new_choices[0] != "No models found. Run scripts/download_model.py" else "⚠️ Download failed?"
-        return gr.update(choices=new_choices, value=new_choices[0]), status
+        
+        default_val = new_choices[0]
+        full_path = valid_checkpoints_dict.get(default_val, "None")
+        
+        return gr.update(choices=new_choices, value=default_val), status, full_path
     except Exception as e:
         gr.Error(f"Download failed: {str(e)}")
-        return gr.update(), "❌ Error during download."
+        return gr.update(), "❌ Error during download.", ""
 
 def refresh_models_handler():
     new_choices = get_model_list()
     num = len(new_choices) if new_choices[0] != "No models found. Run scripts/download_model.py" else 0
     gr.Info(f"Found {num} models.")
     status = "✅ Models loaded." if num > 0 else "⚠️ No models found!"
-    return gr.update(choices=new_choices, value=new_choices[0]), status
+    
+    default_val = new_choices[0]
+    full_path = valid_checkpoints_dict.get(default_val, "None")
+    
+    return gr.update(choices=new_choices, value=default_val), status, full_path
 
 init_pkl = 'stylegan2_lions_512_pytorch'
 
@@ -278,6 +306,9 @@ with gr.Blocks() as app:
                     model_status = gr.Markdown(
                         "⚠️ No models found!" if dropdown_choices[0].startswith("No models") else "✅ Models loaded."
                     )
+
+                    with gr.Accordion("Debug Info", open=False):
+                        loaded_path = gr.Textbox(label="Loaded Model Path", interactive=False)
 
                 # Latent
                 with gr.Row():
@@ -408,18 +439,19 @@ with gr.Blocks() as app:
         2. Re-init images and clear all states
         """
         if pretrained_value is None or pretrained_value not in valid_checkpoints_dict:
-            return global_state, global_state["images"].get('image_show', None)
+            return global_state, global_state["images"].get('image_show', None), ""
 
         global_state['pretrained_weight'] = pretrained_value
         init_images(global_state)
         clear_state(global_state)
 
-        return global_state, global_state["images"]['image_show']
+        full_path = valid_checkpoints_dict.get(pretrained_value, "Unknown")
+        return global_state, global_state["images"]['image_show'], full_path
 
     form_pretrained_dropdown.change(
         on_change_pretrained_dropdown,
         inputs=[form_pretrained_dropdown, global_state],
-        outputs=[global_state, form_image],
+        outputs=[global_state, form_image, loaded_path],
     )
 
     def on_click_reset_image(global_state):
@@ -427,6 +459,8 @@ with gr.Blocks() as app:
         1. Re-init images
         2. Clear all states
         """
+        if global_state['pretrained_weight'] not in valid_checkpoints_dict:
+            return global_state, global_state['images'].get('image_show', None)
 
         init_images(global_state)
         clear_state(global_state)
@@ -916,11 +950,11 @@ with gr.Blocks() as app:
 
     download_btn.click(
         download_models_handler,
-        outputs=[form_pretrained_dropdown, model_status]
+        outputs=[form_pretrained_dropdown, model_status, loaded_path]
     )
     refresh_btn.click(
         refresh_models_handler,
-        outputs=[form_pretrained_dropdown, model_status]
+        outputs=[form_pretrained_dropdown, model_status, loaded_path]
     )
 
     def on_upload_image(image, global_state):
