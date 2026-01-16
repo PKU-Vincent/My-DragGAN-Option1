@@ -188,15 +188,18 @@ def download_models_handler():
         subprocess.run([sys.executable, "scripts/download_model.py"], check=True)
         gr.Info("Download completed successfully!")
         new_choices = get_model_list()
-        return gr.update(choices=new_choices, value=new_choices[0])
+        status = "✅ Models loaded." if new_choices[0] != "No models found. Run scripts/download_model.py" else "⚠️ Download failed?"
+        return gr.update(choices=new_choices, value=new_choices[0]), status
     except Exception as e:
         gr.Error(f"Download failed: {str(e)}")
-        return gr.update()
+        return gr.update(), "❌ Error during download."
 
 def refresh_models_handler():
     new_choices = get_model_list()
-    gr.Info(f"Found {len(new_choices) if new_choices[0] != 'No models found. Run scripts/download_model.py' else 0} models.")
-    return gr.update(choices=new_choices, value=new_choices[0])
+    num = len(new_choices) if new_choices[0] != "No models found. Run scripts/download_model.py" else 0
+    gr.Info(f"Found {num} models.")
+    status = "✅ Models loaded." if num > 0 else "⚠️ No models found!"
+    return gr.update(choices=new_choices, value=new_choices[0]), status
 
 init_pkl = 'stylegan2_lions_512_pytorch'
 
@@ -259,18 +262,22 @@ with gr.Blocks() as app:
                             choices=dropdown_choices,
                             label="Pretrained Model",
                             value=dropdown_choices[0],
+                            interactive=True
                         )
                 
-                # Model Download Instructions
-                if len(valid_checkpoints_dict) == 0:
-                    with gr.Row():
-                        gr.Markdown(
-                            "⚠️ **No models found!** You can click the button below to download "
-                            "the default models (lions, dogs, etc.) or run `python scripts/download_model.py`."
-                        )
-                    with gr.Row():
-                        download_btn = gr.Button("Download Default Models (approx. 2GB)")
-                        refresh_btn = gr.Button("Refresh Model List")
+                # Model Management (Always show these for better UX)
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value='Model', show_label=False)
+                    with gr.Column(scale=4, min_width=10):
+                        with gr.Row():
+                            download_btn = gr.Button("Download Defaults", variant="secondary")
+                            refresh_btn = gr.Button("Refresh List", variant="secondary")
+                
+                with gr.Row():
+                    model_status = gr.Markdown(
+                        "⚠️ No models found!" if dropdown_choices[0].startswith("No models") else "✅ Models loaded."
+                    )
 
                 # Latent
                 with gr.Row():
@@ -907,15 +914,14 @@ with gr.Blocks() as app:
         outputs=[global_state, form_image],
     )
 
-    if len(valid_checkpoints_dict) == 0:
-        download_btn.click(
-            download_models_handler,
-            outputs=[form_pretrained_dropdown]
-        )
-        refresh_btn.click(
-            refresh_models_handler,
-            outputs=[form_pretrained_dropdown]
-        )
+    download_btn.click(
+        download_models_handler,
+        outputs=[form_pretrained_dropdown, model_status]
+    )
+    refresh_btn.click(
+        refresh_models_handler,
+        outputs=[form_pretrained_dropdown, model_status]
+    )
 
     def on_upload_image(image, global_state):
         """Handle user uploading a custom image."""
