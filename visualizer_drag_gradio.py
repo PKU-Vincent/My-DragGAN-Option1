@@ -289,91 +289,93 @@ with gr.Blocks() as app:
 
         # Left --> tools
         with gr.Column(scale=3):
-
-            # Pickle Selection (Prominent and flattened)
-            form_pretrained_dropdown = gr.Dropdown(
-                choices=dropdown_choices if dropdown_choices else ["(Scanning...)"],
-                label="Pickle (Select Model Here)",
-                value=dropdown_choices[0] if dropdown_choices else None,
-                interactive=True,
-                allow_custom_value=False,
-            )
             
-            # Model Management Buttons
-            with gr.Row():
-                download_btn = gr.Button("Download Defaults", variant="secondary")
-                refresh_btn = gr.Button("Refresh List", variant="secondary")
-            
-            model_status = gr.Markdown(
-                "⚠️ No models found!" if not dropdown_choices or dropdown_choices[0].startswith("No models") else "✅ Models loaded."
-            )
-
-            with gr.Accordion("Debug Info", open=False):
-                loaded_path = gr.Textbox(label="Loaded Model Path", interactive=False)
-
-            # Latent Section
-            gr.Markdown("### Latent Controls")
-            with gr.Row():
-                form_seed_number = gr.Number(
-                    value=global_state.value['params']['seed'],
+            # --- Model Selection Group ---
+            with gr.Group():
+                gr.Markdown("### 1. Model Selection")
+                form_pretrained_dropdown = gr.Dropdown(
+                    choices=dropdown_choices,
+                    label="Select Model (.pkl)",
+                    value=dropdown_choices[0] if dropdown_choices else None,
                     interactive=True,
-                    label="Seed",
                 )
-                form_lr_number = gr.Number(
-                    value=global_state.value["params"]["lr"],
-                    interactive=True,
-                    label="Step Size")
+                with gr.Row():
+                    download_btn = gr.Button("Download Defaults", variant="secondary", size="sm")
+                    refresh_btn = gr.Button("Refresh List", variant="secondary", size="sm")
+                
+                model_status = gr.Markdown(
+                    "✅ Models loaded." if dropdown_choices and not dropdown_choices[0].startswith("No models") else "⚠️ No models found!"
+                )
+                with gr.Accordion("Model Path Debug", open=False):
+                    loaded_path = gr.Textbox(label="Full Path", interactive=False, value=valid_checkpoints_dict.get(dropdown_choices[0], "") if dropdown_choices else "")
 
-            with gr.Row():
-                form_reset_image = gr.Button("Reset Image")
-                form_latent_space = gr.Radio(
-                    ['w', 'w+'],
-                    value=global_state.value['params']['latent_space'],
+            # --- Latent Controls Group ---
+            with gr.Group():
+                gr.Markdown("### 2. Latent Controls")
+                with gr.Row():
+                    form_seed_number = gr.Number(
+                        value=global_state.value['params']['seed'],
+                        interactive=True,
+                        label="Seed",
+                    )
+                    form_lr_number = gr.Number(
+                        value=global_state.value["params"]["lr"],
+                        interactive=True,
+                        label="Step Size")
+
+                with gr.Row():
+                    form_reset_image = gr.Button("Reset Image")
+                    form_latent_space = gr.Radio(
+                        ['w', 'w+'],
+                        value=global_state.value['params']['latent_space'],
+                        interactive=True,
+                        label='Latent Space',
+                    )
+
+            # --- Drag Controls Group ---
+            with gr.Group():
+                gr.Markdown("### 3. Drag Controls")
+                with gr.Row():
+                    enable_add_points = gr.Button('Add Points', variant="secondary")
+                    undo_points = gr.Button('Reset Points', variant="secondary")
+                with gr.Row():
+                    form_start_btn = gr.Button("Start Drag", variant="primary")
+                    form_stop_btn = gr.Button("Stop Drag", variant="stop")
+
+                form_steps_number = gr.Number(value=0,
+                                              label="Steps Taken",
+                                              interactive=False)
+
+            # --- Mask Controls Group ---
+            with gr.Group():
+                gr.Markdown("### 4. Mask Controls")
+                enable_add_mask = gr.Button('Edit Flexible Area')
+                with gr.Row():
+                    form_reset_mask_btn = gr.Button("Reset Mask")
+                    show_mask = gr.Checkbox(
+                        label='Show Mask Overlay',
+                        value=global_state.value['show_mask'])
+
+                form_lambda_number = gr.Number(
+                    value=global_state.value["params"]["motion_lambda"],
                     interactive=True,
-                    label='Latent space',
+                    label="Lambda (Mask Strength)",
                 )
 
-            # Drag Section
-            gr.Markdown("### Drag Controls")
-            with gr.Row():
-                enable_add_points = gr.Button('Add Points')
-                undo_points = gr.Button('Reset Points')
-            with gr.Row():
-                form_start_btn = gr.Button("Start", variant="primary")
-                form_stop_btn = gr.Button("Stop", variant="stop")
-
-            form_steps_number = gr.Number(value=0,
-                                          label="Steps",
-                                          interactive=False)
-
-            # Mask Section
-            gr.Markdown("### Mask Controls")
-            enable_add_mask = gr.Button('Edit Flexible Area')
-            with gr.Row():
-                form_reset_mask_btn = gr.Button("Reset mask")
-                show_mask = gr.Checkbox(
-                    label='Show Mask',
-                    value=global_state.value['show_mask'])
-
-            form_lambda_number = gr.Number(
-                value=global_state.value["params"]["motion_lambda"],
+            form_draw_interval_number = gr.Number(
+                value=global_state.value["draw_interval"],
+                label="Draw Interval (steps)",
                 interactive=True,
-                label="Lambda",
-            )
+                visible=False)
 
-                form_draw_interval_number = gr.Number(
-                    value=global_state.value["draw_interval"],
-                    label="Draw Interval (steps)",
-                    interactive=True,
-                    visible=False)
+        # Right --> Image
+        with gr.Column(scale=8):
+            form_image = ImageMask(
+                value=global_state.value['images']['image_show'],
+                label="Interactive Image",
+                width=768,
+                height=768)
 
-            # Right --> Image
-            with gr.Column(scale=8):
-                form_image = ImageMask(
-                    value=global_state.value['images']['image_show'],
-                    brush_radius=20,
-                    width=768,
-                    height=768)  # NOTE: hard image size code here.
     gr.Markdown("""
         ## Quick Start
 
@@ -1029,19 +1031,6 @@ with gr.Blocks() as app:
         on_click_show_mask,
         inputs=[global_state, show_mask],
         outputs=[global_state, form_image],
-    )
-
-    def on_app_load():
-        """Ensure the dropdown is interactive and has choices on load."""
-        print("\n[Startup] App loaded, initializing dropdown...")
-        choices = get_model_list()
-        if choices and not choices[0].startswith("("):
-            return gr.update(choices=choices, value=choices[0], interactive=True), "✅ Models loaded."
-        return gr.update(choices=choices, interactive=True), "⚠️ No models found!"
-
-    app.load(
-        on_app_load,
-        outputs=[form_pretrained_dropdown, model_status]
     )
 
 gr.close_all()
