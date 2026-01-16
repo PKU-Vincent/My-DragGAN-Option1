@@ -290,12 +290,13 @@ with gr.Blocks() as app:
         # Left --> tools
         with gr.Column(scale=3):
 
-            # Pickle Selection (Flattened Layout for Gradio 4.x)
+            # Pickle Selection (Prominent and flattened)
             form_pretrained_dropdown = gr.Dropdown(
-                choices=dropdown_choices,
+                choices=dropdown_choices if dropdown_choices else ["(Scanning...)"],
                 label="Pickle (Select Model Here)",
                 value=dropdown_choices[0] if dropdown_choices else None,
                 interactive=True,
+                allow_custom_value=False,
             )
             
             # Model Management Buttons
@@ -403,18 +404,27 @@ with gr.Blocks() as app:
 
     # Network & latents tab listeners
     def on_change_pretrained_dropdown(pretrained_value, global_state):
-        """Function to handle model change.
-        1. Set pretrained value to global_state
-        2. Re-init images and clear all states
-        """
-        if pretrained_value is None or pretrained_value not in valid_checkpoints_dict:
+        """Function to handle model change."""
+        print(f"\n[Event] Dropdown changed to: {pretrained_value}")
+        
+        if pretrained_value is None:
+            print("[Event] Value is None, ignoring.")
             return global_state, global_state["images"].get('image_show', None), ""
+            
+        if pretrained_value not in valid_checkpoints_dict:
+            print(f"[Event] '{pretrained_value}' not in valid_checkpoints. Current keys: {list(valid_checkpoints_dict.keys())}")
+            # Try to refresh if not found
+            get_model_list()
+            if pretrained_value not in valid_checkpoints_dict:
+                return global_state, global_state["images"].get('image_show', None), "Error: Model path not found"
 
+        print(f"[Event] Loading model from: {valid_checkpoints_dict[pretrained_value]}")
         global_state['pretrained_weight'] = pretrained_value
         init_images(global_state)
         clear_state(global_state)
 
         full_path = valid_checkpoints_dict.get(pretrained_value, "Unknown")
+        print("[Event] Model loaded successfully.")
         return global_state, global_state["images"]['image_show'], full_path
 
     form_pretrained_dropdown.change(
@@ -1019,6 +1029,19 @@ with gr.Blocks() as app:
         on_click_show_mask,
         inputs=[global_state, show_mask],
         outputs=[global_state, form_image],
+    )
+
+    def on_app_load():
+        """Ensure the dropdown is interactive and has choices on load."""
+        print("\n[Startup] App loaded, initializing dropdown...")
+        choices = get_model_list()
+        if choices and not choices[0].startswith("("):
+            return gr.update(choices=choices, value=choices[0], interactive=True), "✅ Models loaded."
+        return gr.update(choices=choices, interactive=True), "⚠️ No models found!"
+
+    app.load(
+        on_app_load,
+        outputs=[form_pretrained_dropdown, model_status]
     )
 
 gr.close_all()
