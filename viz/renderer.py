@@ -356,14 +356,15 @@ class Renderer:
                     cur_img = np.clip(cur_img * 127.5 + 127.5, 0, 255).astype(np.uint8)
                     
                     if self.prev_img is not None and self.prev_points is not None:
-                        # Update points using RAFT with Hybrid Refinement
+                        # Update points using RAFT with Adaptive Hybrid Refinement
                         new_points = self.raft_tracker.update_points(
                             self.prev_img, 
                             cur_img, 
                             points,
                             feat_resize=feat_resize,
                             feat_refs=self.feat_refs,
-                            r2=r2
+                            r2=r2,
+                            targets=targets
                         )
                         for j in range(len(points)):
                             points[j] = new_points[j]
