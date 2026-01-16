@@ -1,5 +1,15 @@
 import os
 import os.path as osp
+import sys
+
+# --- Versioning for Colab Debugging ---
+VERSION = "2026-01-16-V3-GROUPED-UI"
+print(f"\n" + "="*50)
+print(f"STARTING DragGAN Visualizer")
+print(f"Version: {VERSION}")
+print(f"File Path: {osp.abspath(__file__)}")
+print("="*50 + "\n")
+
 from argparse import ArgumentParser
 from functools import partial
 
@@ -168,6 +178,7 @@ def get_model_list():
         '.',                    # root
         './models',             # alternative models folder
         '/content/checkpoints', # Colab default
+        '/content/DragGAN-cv-project/checkpoints',
         '/content/My-DragGAN-Option1/checkpoints' # Specific Colab clone path
     ]
     
@@ -244,7 +255,9 @@ def refresh_models_handler():
 
 init_pkl = 'stylegan2_lions_512_pytorch'
 
-with gr.Blocks() as app:
+with gr.Blocks(title="DragGAN V3") as app:
+    gr.Markdown("# 🚀 DragGAN - NEW UI (Grouped Layout V3)")
+    gr.Markdown(f"**Version:** {VERSION} | **Path:** {osp.abspath(__file__)}")
 
     # renderer = Renderer()
     global_state = gr.State({
