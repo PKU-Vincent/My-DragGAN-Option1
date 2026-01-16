@@ -158,31 +158,45 @@ def preprocess_mask_info(global_state, image):
     return global_state
 
 
-valid_checkpoints_dict = {
-    f.split('/')[-1].split('.')[0]: osp.join(cache_dir, f)
-    for f in os.listdir(cache_dir)
-    if (f.endswith('pkl') and osp.exists(osp.join(cache_dir, f)))
-} if osp.exists(cache_dir) else {}
+def get_model_list():
+    global valid_checkpoints_dict
+    valid_checkpoints_dict = {
+        f.split('/')[-1].split('.')[0]: osp.join(cache_dir, f)
+        for f in os.listdir(cache_dir)
+        if (f.endswith('pkl') and osp.exists(osp.join(cache_dir, f)))
+    } if osp.exists(cache_dir) else {}
 
-# If checkpoints directory is empty, try to find any pkl in the root
-if len(valid_checkpoints_dict) == 0:
-    for f in os.listdir('.'):
-        if f.endswith('.pkl'):
-            valid_checkpoints_dict[f.split('.')[0]] = osp.abspath(f)
+    # If checkpoints directory is empty, try to find any pkl in the root
+    if len(valid_checkpoints_dict) == 0:
+        for f in os.listdir('.'):
+            if f.endswith('.pkl'):
+                valid_checkpoints_dict[f.split('.')[0]] = osp.abspath(f)
+    
+    if len(valid_checkpoints_dict) == 0:
+        return ["No models found. Run scripts/download_model.py"]
+    return sorted(list(valid_checkpoints_dict.keys()))
 
-if len(valid_checkpoints_dict) == 0:
-    print(f'Warning: No checkpoint file found under {cache_dir}')
-    dropdown_choices = ["No models found. Run scripts/download_model.py"]
-else:
-    dropdown_choices = sorted(list(valid_checkpoints_dict.keys()))
+valid_checkpoints_dict = {}
+dropdown_choices = get_model_list()
 
-print(f'File under cache_dir ({cache_dir}):')
-if osp.exists(cache_dir):
-    print(os.listdir(cache_dir))
-else:
-    print("Cache directory does not exist.")
-print('Valid checkpoint file:')
-print(valid_checkpoints_dict)
+def download_models_handler():
+    import subprocess
+    import sys
+    gr.Info("Starting download... this may take several minutes (approx 2GB). Please check your terminal for progress.")
+    try:
+        # Run the download script
+        subprocess.run([sys.executable, "scripts/download_model.py"], check=True)
+        gr.Info("Download completed successfully!")
+        new_choices = get_model_list()
+        return gr.update(choices=new_choices, value=new_choices[0])
+    except Exception as e:
+        gr.Error(f"Download failed: {str(e)}")
+        return gr.update()
+
+def refresh_models_handler():
+    new_choices = get_model_list()
+    gr.Info(f"Found {len(new_choices) if new_choices[0] != 'No models found. Run scripts/download_model.py' else 0} models.")
+    return gr.update(choices=new_choices, value=new_choices[0])
 
 init_pkl = 'stylegan2_lions_512_pytorch'
 
@@ -251,9 +265,12 @@ with gr.Blocks() as app:
                 if len(valid_checkpoints_dict) == 0:
                     with gr.Row():
                         gr.Markdown(
-                            "⚠️ **No models found!** Please run `python scripts/download_model.py` "
-                            "in your terminal to download the pre-trained models, then restart the app."
+                            "⚠️ **No models found!** You can click the button below to download "
+                            "the default models (lions, dogs, etc.) or run `python scripts/download_model.py`."
                         )
+                    with gr.Row():
+                        download_btn = gr.Button("Download Default Models (approx. 2GB)")
+                        refresh_btn = gr.Button("Refresh Model List")
 
                 # Latent
                 with gr.Row():
@@ -889,6 +906,16 @@ with gr.Blocks() as app:
         inputs=[global_state],
         outputs=[global_state, form_image],
     )
+
+    if len(valid_checkpoints_dict) == 0:
+        download_btn.click(
+            download_models_handler,
+            outputs=[form_pretrained_dropdown]
+        )
+        refresh_btn.click(
+            refresh_models_handler,
+            outputs=[form_pretrained_dropdown]
+        )
 
     def on_upload_image(image, global_state):
         """Handle user uploading a custom image."""
