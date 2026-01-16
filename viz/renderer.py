@@ -300,6 +300,7 @@ class Renderer:
         is_drag         = False,
         reset           = False,
         to_pil          = False,
+        tracker_type    = 'Feature Matching',
         **kwargs
     ):
         G = self.G
@@ -349,22 +350,36 @@ class Renderer:
 
             # Point tracking
             with torch.no_grad():
-                # Original feature matching logic
-                for j, point in enumerate(points):
-                    r = round(r2 / 512 * h)
-                    up = max(int(round(point[0] - r)), 0)
-                    down = min(int(round(point[0] + r + 1)), h)
-                    left = max(int(round(point[1] - r)), 0)
-                    right = min(int(round(point[1] + r + 1)), w)
-                    feat_patch = feat_resize[:,:,up:down,left:right]
-                    L2 = torch.linalg.norm(feat_patch - self.feat_refs[j].reshape(1,-1,1,1), dim=1)
-                    _, idx = torch.min(L2.view(1,-1), -1)
-                    width = right - left
-                    point = [idx.item() // width + up, idx.item() % width + left]
-                    # Clamp point to image boundaries
-                    point[0] = max(0, min(point[0], h - 1))
-                    point[1] = max(0, min(point[1], w - 1))
-                    points[j] = point
+                if tracker_type == 'RAFT Guided' and self.raft_tracker.is_ready:
+                    # RAFT-guided tracking
+                     cur_img = img[0].detach().cpu().permute(1, 2, 0).numpy()
+                     cur_img = np.clip(cur_img * 127.5 + 127.5, 0, 255).astype(np.uint8)
+                    
+                    if self.prev_img is not None and self.prev_points is not None:
+                        # Update points using RAFT
+                        new_points = self.raft_tracker.update_points(self.prev_img, cur_img, points)
+                        for j in range(len(points)):
+                            points[j] = new_points[j]
+                    
+                    self.prev_img = cur_img
+                    self.prev_points = copy.deepcopy(points)
+                else:
+                    # Original feature matching logic
+                    for j, point in enumerate(points):
+                        r = round(r2 / 512 * h)
+                        up = max(int(round(point[0] - r)), 0)
+                        down = min(int(round(point[0] + r + 1)), h)
+                        left = max(int(round(point[1] - r)), 0)
+                        right = min(int(round(point[1] + r + 1)), w)
+                        feat_patch = feat_resize[:,:,up:down,left:right]
+                        L2 = torch.linalg.norm(feat_patch - self.feat_refs[j].reshape(1,-1,1,1), dim=1)
+                        _, idx = torch.min(L2.view(1,-1), -1)
+                        width = right - left
+                        point = [idx.item() // width + up, idx.item() % width + left]
+                        # Clamp point to image boundaries
+                        point[0] = max(0, min(point[0], h - 1))
+                        point[1] = max(0, min(point[1], w - 1))
+                        points[j] = point
 
             res.points = [[point[0], point[1]] for point in points]
 

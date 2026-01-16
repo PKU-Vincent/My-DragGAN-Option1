@@ -289,6 +289,7 @@ with gr.Blocks(title="DragGAN V3") as app:
             "trunc_psi": 0.7,
             "trunc_cutoff": None,
             "lr": 0.001,
+            "tracker_type": "Feature Matching",
         },
         "device": device,
         "draw_interval": 1,
@@ -353,6 +354,13 @@ with gr.Blocks(title="DragGAN V3") as app:
             # --- Drag Controls Group ---
             with gr.Group():
                 gr.Markdown("### 3. Drag Controls")
+                with gr.Row():
+                    form_tracker_type = gr.Radio(
+                        ['Feature Matching', 'RAFT Guided'],
+                        value='Feature Matching',
+                        label='Point Tracking Method',
+                        interactive=True,
+                    )
                 with gr.Row():
                     enable_add_points = gr.Button('Add Points', variant="secondary")
                     undo_points = gr.Button('Reset Points', variant="secondary")
@@ -535,7 +543,13 @@ with gr.Blocks(title="DragGAN V3") as app:
         outputs=[global_state],
     )
 
-    def on_click_start(global_state, image):
+    form_tracker_type.change(
+        partial(on_change_single_global_state, ["params", "tracker_type"]),
+        inputs=[form_tracker_type, global_state],
+        outputs=[global_state],
+    )
+
+    def on_click_start(global_state, image, tracker_type):
         p_in_pixels = []
         t_in_pixels = []
         valid_points = []
@@ -661,7 +675,8 @@ with gr.Blocks(title="DragGAN V3") as app:
                     # img_normalize   = False,
                     # untransform     = False,
                     is_drag=True,
-                    to_pil=True)
+                    to_pil=True,
+                    tracker_type=tracker_type)
 
                 if step_idx % global_state['draw_interval'] == 0:
                     print('Current Source:')
@@ -758,7 +773,7 @@ with gr.Blocks(title="DragGAN V3") as app:
 
     form_start_btn.click(
         on_click_start,
-        inputs=[global_state, form_image],
+        inputs=[global_state, form_image, form_tracker_type],
         outputs=[
             global_state,
             form_steps_number,
@@ -771,6 +786,7 @@ with gr.Blocks(title="DragGAN V3") as app:
             undo_points,
             form_reset_mask_btn,
             form_latent_space,
+            form_tracker_type,
             form_start_btn,
             form_stop_btn,
             # <<< buttonm
