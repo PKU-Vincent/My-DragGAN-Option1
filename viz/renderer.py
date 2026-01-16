@@ -352,8 +352,8 @@ class Renderer:
             with torch.no_grad():
                 if tracker_type == 'RAFT Guided' and self.raft_tracker.is_ready:
                     # RAFT-guided tracking
-                     cur_img = img[0].detach().cpu().permute(1, 2, 0).numpy()
-                     cur_img = np.clip(cur_img * 127.5 + 127.5, 0, 255).astype(np.uint8)
+                    cur_img = img[0].detach().cpu().permute(1, 2, 0).numpy()
+                    cur_img = np.clip(cur_img * 127.5 + 127.5, 0, 255).astype(np.uint8)
                     
                     if self.prev_img is not None and self.prev_points is not None:
                         # Update points using RAFT
