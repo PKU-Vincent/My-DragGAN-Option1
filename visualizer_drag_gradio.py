@@ -162,38 +162,49 @@ def get_model_list():
     global valid_checkpoints_dict
     valid_checkpoints_dict = {}
     
-    print(f"Scanning for models in {cache_dir} and root...")
+    # Common locations to search for models
+    search_dirs = [
+        cache_dir,              # ./checkpoints
+        '.',                    # root
+        './models',             # alternative models folder
+        '/content/checkpoints', # Colab default
+        '/content/My-DragGAN-Option1/checkpoints' # Specific Colab clone path
+    ]
     
-    # Search in cache_dir
-    if osp.exists(cache_dir):
-        for f in os.listdir(cache_dir):
-            if f.endswith('.pkl'):
-                name = osp.splitext(f)[0]
-                valid_checkpoints_dict[name] = osp.abspath(osp.join(cache_dir, f))
-                print(f"Found model in checkpoints: {name}")
-
-    # Also search in root directory
-    for f in os.listdir('.'):
-        if f.endswith('.pkl'):
-            name = osp.splitext(f)[0]
-            if name not in valid_checkpoints_dict:
-                valid_checkpoints_dict[name] = osp.abspath(f)
-                print(f"Found model in root: {name}")
+    print("\n--- Scanning for model files (.pkl) ---")
+    for d in search_dirs:
+        if osp.exists(d):
+            print(f"Scanning directory: {osp.abspath(d)}")
+            try:
+                for f in os.listdir(d):
+                    if f.endswith('.pkl'):
+                        name = osp.splitext(f)[0]
+                        if name not in valid_checkpoints_dict:
+                            full_path = osp.abspath(osp.join(d, f))
+                            valid_checkpoints_dict[name] = full_path
+                            print(f"  [Found] {name} -> {full_path}")
+            except Exception as e:
+                print(f"  [Error] Could not scan {d}: {e}")
     
     if len(valid_checkpoints_dict) == 0:
-        print("No models found!")
-        return ["No models found. Run scripts/download_model.py"]
+        print("!!! No .pkl models found in any search directory !!!")
+        return ["(No models found - Click Download)"]
     
     models = sorted(list(valid_checkpoints_dict.keys()))
     
-    # Move lion model to the front if it exists
-    lion_model = 'stylegan2_lions_512_pytorch'
-    if lion_model in models:
-        models.remove(lion_model)
-        models.insert(0, lion_model)
-        print(f"Setting default model to: {models[0]}")
+    # Priority models
+    priority_models = [
+        'stylegan2_lions_512_pytorch',
+        'stylegan2_elephants_512_pytorch',
+        'stylegan2_horses_512_pytorch'
+    ]
+    for pm in reversed(priority_models):
+        if pm in models:
+            models.remove(pm)
+            models.insert(0, pm)
     
-    print(f"Final model list: {models}")
+    print(f"--- Final Model List ({len(models)} models) ---")
+    print(f"Default model: {models[0]}")
     return models
 
 valid_checkpoints_dict = {}
@@ -208,7 +219,9 @@ def download_models_handler():
         subprocess.run([sys.executable, "scripts/download_model.py"], check=True)
         gr.Info("Download completed successfully!")
         new_choices = get_model_list()
-        status = "✅ Models loaded." if new_choices[0] != "No models found. Run scripts/download_model.py" else "⚠️ Download failed?"
+        
+        has_models = not new_choices[0].startswith("(")
+        status = "✅ Models loaded." if has_models else "⚠️ Download finished but no .pkl files found."
         
         default_val = new_choices[0]
         full_path = valid_checkpoints_dict.get(default_val, "None")
@@ -220,9 +233,15 @@ def download_models_handler():
 
 def refresh_models_handler():
     new_choices = get_model_list()
-    num = len(new_choices) if new_choices[0] != "No models found. Run scripts/download_model.py" else 0
-    gr.Info(f"Found {num} models.")
-    status = "✅ Models loaded." if num > 0 else "⚠️ No models found!"
+    has_models = not new_choices[0].startswith("(")
+    num = len(new_choices) if has_models else 0
+    
+    if has_models:
+        gr.Info(f"Found {num} models.")
+        status = "✅ Models loaded."
+    else:
+        gr.Warning("No models found in checkpoints/ or root directory.")
+        status = "⚠️ No models found!"
     
     default_val = new_choices[0]
     full_path = valid_checkpoints_dict.get(default_val, "None")
@@ -276,75 +295,65 @@ with gr.Blocks() as app:
         # Left --> tools
         with gr.Column(scale=3):
 
-            # Pickle Model Selection
-            with gr.Group():
-                gr.Markdown("### 1. Model Selection (Pickle)")
-                form_pretrained_dropdown = gr.Dropdown(
-                    choices=dropdown_choices,
-                    label="Select Model Weights",
-                    value=dropdown_choices[0],
+            # 1. Model Selection
+            form_pretrained_dropdown = gr.Dropdown(
+                choices=dropdown_choices,
+                label="Pretrained Model (Pickle)",
+                value=dropdown_choices[0],
+                interactive=True,
+            )
+            
+            with gr.Row():
+                download_btn = gr.Button("Download Models", variant="primary")
+                refresh_btn = gr.Button("Refresh List")
+            
+            model_status = gr.Markdown(
+                "✅ Models loaded." if not dropdown_choices[0].startswith("(") else "⚠️ No models found! Click 'Download Models'."
+            )
+
+            # 2. Image Generation
+            with gr.Row():
+                form_seed_number = gr.Number(
+                    value=global_state.value['params']['seed'],
                     interactive=True,
+                    label="Seed",
                 )
-                
-                with gr.Row():
-                    download_btn = gr.Button("Download Defaults", variant="secondary")
-                    refresh_btn = gr.Button("Refresh List", variant="secondary")
-                
-                model_status = gr.Markdown(
-                    "✅ Models loaded." if not dropdown_choices[0].startswith("No models") else "⚠️ No models found!"
+                form_lr_number = gr.Number(
+                    value=global_state.value["params"]["lr"],
+                    interactive=True,
+                    label="Step Size")
+
+            with gr.Row():
+                form_reset_image = gr.Button("Reset Image")
+                form_latent_space = gr.Radio(
+                    ['w', 'w+'],
+                    value=global_state.value['params']['latent_space'],
+                    interactive=True,
+                    label='Latent Space',
                 )
 
-                with gr.Accordion("Debug Info", open=False):
-                    loaded_path = gr.Textbox(label="Full Path", value=valid_checkpoints_dict.get(dropdown_choices[0], ""), interactive=False)
+            # 3. Drag Control
+            with gr.Row():
+                enable_add_points = gr.Button('Add Points', variant="primary")
+                undo_points = gr.Button('Reset Points')
+            
+            with gr.Row():
+                form_start_btn = gr.Button("Start", variant="primary")
+                form_stop_btn = gr.Button("Stop")
 
-            # Latent space & Seed
-            with gr.Group():
-                gr.Markdown("### 2. Image Generation (Latent)")
-                with gr.Row():
-                    form_seed_number = gr.Number(
-                        value=global_state.value['params']['seed'],
-                        interactive=True,
-                        label="Seed",
-                    )
-                    form_lr_number = gr.Number(
-                        value=global_state.value["params"]["lr"],
-                        interactive=True,
-                        label="Step Size")
+            form_steps_number = gr.Number(value=0, label="Steps", interactive=False)
 
-                with gr.Row():
-                    form_reset_image = gr.Button("Reset Image")
-                    form_latent_space = gr.Radio(
-                        ['w', 'w+'],
-                        value=global_state.value['params']['latent_space'],
-                        interactive=True,
-                        label='Latent Space',
-                    )
+            # 4. Masking
+            enable_add_mask = gr.Button('Edit Flexible Area')
+            with gr.Row():
+                form_reset_mask_btn = gr.Button("Reset Mask")
+                show_mask = gr.Checkbox(
+                    label='Show Mask',
+                    value=global_state.value['show_mask'],
+                )
 
-            # Drag controls
-            with gr.Group():
-                gr.Markdown("### 3. Drag Control")
-                with gr.Row():
-                    enable_add_points = gr.Button('Add Points', variant="primary")
-                    undo_points = gr.Button('Reset Points')
-                
-                with gr.Row():
-                    form_start_btn = gr.Button("Start", variant="primary")
-                    form_stop_btn = gr.Button("Stop")
-
-                form_steps_number = gr.Number(value=0, label="Steps", interactive=False)
-
-            # Mask controls
-            with gr.Group():
-                gr.Markdown("### 4. Masking (Optional)")
-                enable_add_mask = gr.Button('Edit Flexible Area')
-                with gr.Row():
-                    form_reset_mask_btn = gr.Button("Reset Mask")
-                    show_mask = gr.Checkbox(
-                        label='Show Mask',
-                        value=global_state.value['show_mask'],
-                    )
-
-            with gr.Row(visible=False):
+            with gr.Accordion("Debug & Advanced", open=False):
+                loaded_path = gr.Textbox(label="Model Path", value=valid_checkpoints_dict.get(dropdown_choices[0], ""), interactive=False)
                 form_lambda_number = gr.Number(
                     value=global_state.value["params"]["motion_lambda"],
                     label="Lambda",
@@ -383,15 +392,15 @@ with gr.Blocks() as app:
         """)
     gr.HTML("""
         <style>
-            .container {
-                position: absolute;
-                height: 50px;
+            .footer-container {
+                margin-top: 20px;
                 text-align: center;
-                line-height: 50px;
                 width: 100%;
+                padding: 10px;
+                border-top: 1px solid #ddd;
             }
         </style>
-        <div class="container">
+        <div class="footer-container">
         Gradio demo supported by
         <img src="https://avatars.githubusercontent.com/u/10245193?s=200&v=4" height="20" width="20" style="display:inline;">
         <a href="https://github.com/open-mmlab/mmagic">OpenMMLab MMagic</a>
@@ -404,14 +413,29 @@ with gr.Blocks() as app:
         1. Set pretrained value to global_state
         2. Re-init images and clear all states
         """
-        if pretrained_value is None or pretrained_value not in valid_checkpoints_dict:
+        print(f"\n[Event] Dropdown changed to: {pretrained_value}")
+        
+        if pretrained_value is None or pretrained_value.startswith("(") or pretrained_value not in valid_checkpoints_dict:
+            print(f"  [Warning] Invalid model selection: {pretrained_value}")
+            gr.Warning(f"Invalid model selection: {pretrained_value}")
             return global_state, global_state["images"].get('image_show', None), ""
 
+        print(f"  [Action] Loading model: {pretrained_value}")
+        print(f"  [Path] {valid_checkpoints_dict[pretrained_value]}")
+        
         global_state['pretrained_weight'] = pretrained_value
-        init_images(global_state)
-        clear_state(global_state)
+        
+        try:
+            init_images(global_state)
+            clear_state(global_state)
+            print(f"  [Success] Model {pretrained_value} loaded.")
+        except Exception as e:
+            print(f"  [Error] Failed to load model: {e}")
+            gr.Error(f"Failed to load model: {str(e)}")
+            return global_state, global_state["images"].get('image_show', None), str(e)
 
         full_path = valid_checkpoints_dict.get(pretrained_value, "Unknown")
+        gr.Info(f"Loaded model: {pretrained_value}")
         return global_state, global_state["images"]['image_show'], full_path
 
     form_pretrained_dropdown.change(
@@ -426,6 +450,7 @@ with gr.Blocks() as app:
         2. Clear all states
         """
         if global_state['pretrained_weight'] not in valid_checkpoints_dict:
+            gr.Warning("No valid model loaded. Please select a model first.")
             return global_state, global_state['images'].get('image_show', None)
 
         init_images(global_state)
