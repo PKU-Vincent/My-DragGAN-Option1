@@ -36,6 +36,11 @@ args = parser.parse_args()
 
 cache_dir = args.cache_dir
 
+# --- Critical Fix: Ensure cache_dir exists to prevent FileNotFoundError ---
+if not osp.exists(cache_dir):
+    print(f"[Init] Creating missing directory: {osp.abspath(cache_dir)}")
+    os.makedirs(cache_dir, exist_ok=True)
+
 device = 'cuda'
 
 
