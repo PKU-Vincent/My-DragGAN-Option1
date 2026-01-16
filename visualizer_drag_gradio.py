@@ -581,8 +581,8 @@ with gr.Blocks(title="DragGAN V3") as app:
                 gr.update(interactive=True),
                 # latent space
                 gr.update(interactive=True),
-                gr.update(interactive=True),
                 # NOTE: disable stop button
+                gr.update(interactive=True),
                 gr.update(interactive=False),
 
                 # update other comps
@@ -590,9 +590,6 @@ with gr.Blocks(title="DragGAN V3") as app:
                 gr.update(interactive=True),
                 gr.update(interactive=True),
                 gr.update(interactive=True),
-                gr.update(interactive=True),
-                gr.update(interactive=True),
-                # gr.update(interactive=True),
                 gr.update(interactive=True),
             )
         else:
@@ -716,8 +713,8 @@ with gr.Blocks(title="DragGAN V3") as app:
                     gr.update(interactive=False),
                     # latent space
                     gr.update(interactive=False),
-                    gr.update(interactive=False),
                     # enable stop button in loop
+                    gr.update(interactive=False),
                     gr.update(interactive=True),
 
                     # update other comps
@@ -725,9 +722,6 @@ with gr.Blocks(title="DragGAN V3") as app:
                     gr.update(interactive=False),
                     gr.update(interactive=False),
                     gr.update(interactive=False),
-                    gr.update(interactive=False),
-                    gr.update(interactive=False),
-                    # gr.update(interactive=False),
                     gr.update(interactive=False),
                 )
 
@@ -759,8 +753,8 @@ with gr.Blocks(title="DragGAN V3") as app:
                 gr.update(interactive=True),
                 # latent space
                 gr.update(interactive=True),
-                gr.update(interactive=True),
                 # NOTE: disable stop button with loop finish
+                gr.update(interactive=True),
                 gr.update(interactive=False),
 
                 # update other comps
@@ -786,7 +780,6 @@ with gr.Blocks(title="DragGAN V3") as app:
             undo_points,
             form_reset_mask_btn,
             form_latent_space,
-            form_tracker_type,
             form_start_btn,
             form_stop_btn,
             # <<< buttonm
