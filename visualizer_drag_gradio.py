@@ -297,9 +297,9 @@ with gr.Blocks() as app:
 
             # 1. Model Selection
             form_pretrained_dropdown = gr.Dropdown(
-                choices=dropdown_choices,
-                label="Pretrained Model (Pickle)",
-                value=dropdown_choices[0],
+                choices=dropdown_choices if dropdown_choices else ["(Scanning...)"],
+                label="Pickle (Select Model Here)",
+                value=dropdown_choices[0] if dropdown_choices else None,
                 interactive=True,
             )
             
@@ -408,6 +408,15 @@ with gr.Blocks() as app:
         """)
 
     # Network & latents tab listeners
+    def on_app_load():
+        """Ensure model list is refreshed on startup."""
+        print("\n[Startup] Refreshing model list...")
+        new_choices = get_model_list()
+        print(f"[Startup] Found choices: {new_choices}")
+        if not new_choices or new_choices[0].startswith("("):
+            return gr.update(choices=new_choices), "⚠️ No models found! Please download."
+        return gr.update(choices=new_choices, value=new_choices[0]), "✅ Models loaded."
+
     def on_change_pretrained_dropdown(pretrained_value, global_state):
         """Function to handle model change.
         1. Set pretrained value to global_state
@@ -1041,6 +1050,11 @@ with gr.Blocks() as app:
         on_click_show_mask,
         inputs=[global_state, show_mask],
         outputs=[global_state, form_image],
+    )
+
+    app.load(
+        on_app_load,
+        outputs=[form_pretrained_dropdown, model_status]
     )
 
 gr.close_all()
