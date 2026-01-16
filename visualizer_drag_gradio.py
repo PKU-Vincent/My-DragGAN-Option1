@@ -286,7 +286,6 @@ with gr.Blocks() as app:
                         label="Pickle (Select Model)",
                         value=dropdown_choices[0],
                         interactive=True,
-                        show_label=True
                     )
                 
                 # Model Management (Always show these for better UX)
