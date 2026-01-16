@@ -36,6 +36,31 @@
 
 [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/app-center/openxlab_app.svg)](https://openxlab.org.cn/apps/detail/XingangPan/DragGAN)
 
+## Quick Start on Google Colab
+You can run DragGAN directly on Google Colab without local installation.
+
+1. **Clone the repository**:
+   ```bash
+   !git clone https://github.com/PKU-Vincent/My-DragGAN-Option1.git
+   %cd My-DragGAN-Option1
+   ```
+
+2. **Run setup & Download models**:
+   ```bash
+   # Option A: Run step-by-step
+   !pip install -r requirements.txt
+   !python scripts/download_model.py
+
+   # Option B: Use the automation script
+   !sh colab_setup.sh
+   ```
+
+3. **Launch Gradio Interface**:
+   ```bash
+   !python visualizer_drag_gradio.py --share
+   ```
+   *Note: Use the generated `gradio.live` link to access the interface.*
+
 <p align="left">
   <a href="https://huggingface.co/spaces/radames/DragGan"><img alt="Huggingface" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-DragGAN-orange"></a>
 </p>
