@@ -108,8 +108,8 @@ class RAFTTracker:
                     # 4. 混合微调 (Hybrid Refinement)
                     # 如果提供了特征图，我们在 RAFT 预测的点周围进行局部搜索以锁定语义特征
                     if feat_resize is not None and feat_refs is not None and r2 is not None:
-                        # 这里的 r 可以比原算法小，因为 RAFT 已经提供了很好的初值
-                        r = max(2, round(r2 / 512 * H / 2)) 
+                        # 恢复使用完整的 r2 搜索半径，以确保特征匹配的鲁棒性
+                        r = round(r2 / 512 * H)
                         up = max(int(round(py - r)), 0)
                         down = min(int(round(py + r + 1)), H)
                         left = max(int(round(px - r)), 0)
