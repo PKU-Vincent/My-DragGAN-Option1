@@ -196,15 +196,16 @@ def get_model_list():
     priority_models = [
         'stylegan2_lions_512_pytorch',
         'stylegan2_elephants_512_pytorch',
-        'stylegan2_horses_512_pytorch'
+        'stylegan2_horses_256_pytorch',
+        'stylegan2-ffhq-512x512'
     ]
     for pm in reversed(priority_models):
         if pm in models:
             models.remove(pm)
             models.insert(0, pm)
+            print(f"Setting default model to: {models[0]}")
     
-    print(f"--- Final Model List ({len(models)} models) ---")
-    print(f"Default model: {models[0]}")
+    print(f"Final model list: {models}")
     return models
 
 valid_checkpoints_dict = {}
@@ -286,19 +287,17 @@ with gr.Blocks() as app:
 
     with gr.Row():
 
-        with gr.Row():
+        # Left --> tools
+        with gr.Column(scale=3):
 
-            # Left --> tools
-            with gr.Column(scale=3):
-
-                # Pickle
-                with gr.Row():
-                    form_pretrained_dropdown = gr.Dropdown(
-                        choices=dropdown_choices,
-                        label="Pickle (Select Model)",
-                        value=dropdown_choices[0],
-                        interactive=True,
-                    )
+            # Pickle
+            with gr.Row():
+                form_pretrained_dropdown = gr.Dropdown(
+                    choices=dropdown_choices,
+                    label="Pickle (Select Model Here)",
+                    value=dropdown_choices[0],
+                    interactive=True,
+                )
                 
                 # Model Management (Always show these for better UX)
                 with gr.Row():
@@ -431,6 +430,11 @@ with gr.Blocks() as app:
                 line-height: 50px;
                 width: 100%;
             }
+            /* Fix for Gradio 4 dropdown clipping */
+            .gradio-container { overflow: visible !important; }
+            .tabs { overflow: visible !important; }
+            div[class*="column"] { overflow: visible !important; }
+            div[class*="row"] { overflow: visible !important; }
         </style>
         <div class="container">
         Gradio demo supported by
